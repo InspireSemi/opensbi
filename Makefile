@@ -87,11 +87,13 @@ CC		=	$(CROSS_COMPILE)gcc
 AR		=	$(CROSS_COMPILE)ar
 LD		=	$(CROSS_COMPILE)ld
 OBJCOPY		=	$(CROSS_COMPILE)objcopy
+OBJDUMP		=	$(CROSS_COMPILE)objdump
 else
 CC		?=	gcc
 AR		?=	ar
 LD		?=	ld
 OBJCOPY		?=	objcopy
+OBJDUMP		?=	objdump
 endif
 endif
 CPP		=	$(CC) -E
@@ -421,10 +423,33 @@ targets-y += $(firmware-bins-path-y)
 
 # Default rule "make" should always be first rule
 .PHONY: all
-all: $(targets-y)
+all: $(targets-y) $(platform_build_dir)/firmware/fw_payload.bin.cyp
 
 # Preserve all intermediate files
 .SECONDARY:
+
+ROOTDIR = ../
+CRYPTOCOREBIN = $(ROOTDIR)bintools
+LDADDR = $(CRYPTOCOREBIN)/loadaddr.sh
+PACKAGER = $(CRYPTOCOREBIN)/cryptopackager
+
+$(platform_build_dir)/firmware/fw_payload.bin.cyp :  LOADADDR = $(shell $(LDADDR) $(platform_build_dir)/firmware/fw_payload.elf)
+$(platform_build_dir)/firmware/fw_payload.bin.cyp: $(platform_build_dir)/firmware/fw_payload.bin
+	echo $(LOADADDR)
+	$(PACKAGER) $^ $(LOADADDR)
+	$(OBJDUMP) -S -D -x $(platform_build_dir)/firmware/fw_payload.elf >> $(platform_build_dir)/firmware/fw_payload.dump
+	cp $(platform_build_dir)/firmware/fw_payload.dump $(ROOTDIR)/test
+	cp $@ $(ROOTDIR)/test
+
+
+$(build_dir)/%.bin: $(build_dir)/%.elf
+	$(call compile_objcopy,$@,$<)
+
+$(build_dir)/%.elf: $(build_dir)/%.o $(build_dir)/%.elf.ld $(platform_build_dir)/lib/libplatsbi.a
+	$(call compile_elf,$@,$@.ld,$< $(platform_build_dir)/lib/libplatsbi.a)
+
+$(platform_build_dir)/%.ld: $(src_dir)/%.ldS
+	$(call compile_cpp,$@,$<)
 
 $(build_dir)/lib/libsbi.a: $(libsbi-objs-path-y)
 	$(call compile_ar,$@,$^)
@@ -565,7 +590,7 @@ install_libsbiutils: $(build_dir)/lib/libsbiutils.a
 	$(call inst_file,$(install_root_dir)/$(install_lib_path)/libsbiutils.a,$(build_dir)/lib/libsbiutils.a)
 
 .PHONY: install_libplatsbi
-install_libplatsbi: $(platform_build_dir)/lib/libplatsbi.a $(build_dir)/lib/libsbi.a $(build_dir)/lib/libsbiutils.a
+install_libplatsbi: $(platform_build_dir)/lib/libplats0x0000000080000000bi.a $(build_dir)/lib/libsbi.a $(build_dir)/lib/libsbiutils.a
 	$(call inst_file,$(install_root_dir)/$(install_lib_path)/opensbi/$(platform_subdir)/lib/libplatsbi.a,$(platform_build_dir)/lib/libplatsbi.a)
 
 .PHONY: install_firmwares
@@ -591,6 +616,8 @@ clean:
 	$(CMD_PREFIX)find $(build_dir) -type f -name "*.bin" -exec rm -rf {} +
 	$(if $(V), @echo " RM        $(build_dir)/*.dtb")
 	$(CMD_PREFIX)find $(build_dir) -type f -name "*.dtb" -exec rm -rf {} +
+	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.bin.cyp
+	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.dump
 
 # Rule for "make distclean"
 .PHONY: distclean

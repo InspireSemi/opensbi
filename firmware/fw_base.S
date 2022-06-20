@@ -17,6 +17,10 @@
 #define BOOT_STATUS_RELOCATE_DONE	1
 #define BOOT_STATUS_BOOT_HART_DONE	2
 
+// The boot hart
+#define BOOT_HART 0x1dd2
+
+
 .macro	MOV_3R __d0, __s0, __d1, __s1, __d2, __s2
 	add	\__d0, \__s0, zero
 	add	\__d1, \__s1, zero
@@ -47,6 +51,7 @@
 	.globl _start
 	.globl _start_warm
 _start:
+#if 0
 	/* Find preferred boot HART id */
 	MOV_3R	s0, a0, s1, a1, s2, a2
 	call	fw_boot_hart
@@ -211,6 +216,12 @@ _relocate_done:
 	fence	rw, rw
 
 	/* At this point we are running from link address */
+#endif
+	/* InspireSemi Mod */
+	/* Jump to _wait_for_boot_hart if this is not the boot hart */ 
+	csrr	a6, CSR_MHARTID
+	li		a7, BOOT_HART
+	bne		a7, a6, _wait_for_boot_hart	
 
 	/* Reset all registers for boot HART */
 	li	ra, 0
@@ -234,9 +245,9 @@ _bss_zero:
 	add	sp, s4, s5
 
 	/* Allow main firmware to save info */
-	MOV_5R	s0, a0, s1, a1, s2, a2, s3, a3, s4, a4
-	call	fw_save_info
-	MOV_5R	a0, s0, a1, s1, a2, s2, a3, s3, a4, s4
+//	MOV_5R	s0, a0, s1, a1, s2, a2, s3, a3, s4, a4
+//	call	fw_save_info
+//	MOV_5R	a0, s0, a1, s1, a2, s2, a3, s3, a4, s4
 
 #ifdef FW_FDT_PATH
 	/* Override previous arg1 */
@@ -244,7 +255,7 @@ _bss_zero:
 #endif
 
 	/*
-	 * Initialize platform
+	 * Initialize platform -- make any early dtb additions/subtractions
 	 * Note: The a0 to a4 registers passed to the
 	 * firmware are parameters to this function.
 	 */
@@ -254,7 +265,7 @@ _bss_zero:
 	MOV_5R	a0, s0, a1, s1, a2, s2, a3, s3, a4, s4
 	add	a1, t0, zero
 
-	/* Preload HART details
+	/* Preload HART details -- defined in platform.c
 	 * s7 -> HART Count
 	 * s8 -> HART Stack Size
 	 */
@@ -418,13 +429,15 @@ _wait_for_boot_hart:
 	bne	t0, t1, _wait_for_boot_hart
 
 _start_warm:
-	/* Reset all registers for non-boot HARTs */
+	/* Reset all registers all HARTs */
 	li	ra, 0
 	call	_reset_regs
 
+#if 0	
 	/* Disable and clear all interrupts */
 	csrw	CSR_MIE, zero
 	csrw	CSR_MIP, zero
+#endif
 
 	/* Find HART count and HART stack size */
 	lla	a4, platform
@@ -445,17 +458,17 @@ _start_warm:
 	li	a4, 0
 1:
 #if __riscv_xlen == 64
-	lwu	a5, (s9)
+	lwu	a5, (s9) /* Hart ID is now in a5 */
 #else
 	lw	a5, (s9)
 #endif
-	beq	a5, s6, 2f
-	add	s9, s9, 4
-	add	a4, a4, 1
-	blt	a4, s7, 1b
-	li	a4, -1
-2:	add	s6, a4, zero
-3:	bge	s6, s7, _start_hang
+	beq	a5, s6, 2f /* s6 Hart Id, a5 is the index hart id # from platform.c hondo_hart_index2id[] */
+	add	s9, s9, 4  /* Increment the pointer */
+	add	a4, a4, 1  /* add 1 to the hart id */
+	blt	a4, s7, 1b /* Check if we have looked at all harts defined in the code */
+	li	a4, -1     /* We have checked for all harts, set error */
+2:	add	s6, a4, zero /* s6 now has the index 0,1,2,3,etc.. of the matching hart id or -1 for no match found */
+3:	bge	s6, s7, _start_hang /* Hang if we never found a match to our hart id */
 
 	/* Find the scratch space based on HART index */
 	lla	tp, _fw_end
@@ -464,13 +477,13 @@ _start_warm:
 	mul	a5, s8, s6
 	sub	tp, tp, a5
 	li	a5, SBI_SCRATCH_SIZE
-	sub	tp, tp, a5
+	sub	tp, tp, a5 /* tp now points to this harts scratch space */
 
-	/* update the mscratch */
+	/* update the mscratch csr register for this hart with the above value*/
 	csrw	CSR_MSCRATCH, tp
 
 	/* Setup stack */
-	add	sp, tp, zero
+	add	sp, tp, zero  /* 4k stack */
 
 	/* Setup trap handler */
 	lla	a4, _trap_handler
@@ -505,12 +518,6 @@ _skip_trap_exit_rv32_hyp:
 
 	.data
 	.align 3
-#ifdef FW_PIC
-_runtime_offset:
-	RISCV_PTR	0
-#endif
-_relocate_lottery:
-	RISCV_PTR	0
 _boot_status:
 	RISCV_PTR	0
 _load_start:
@@ -790,7 +797,8 @@ _trap_exit_rv32_hyp:
 _reset_regs:
 
 	/* flush the instruction cache */
-	fence.i
+	/* fence.i */
+
 	/* Reset all registers except ra, a0, a1 and a2 */
 	li sp, 0
 	li gp, 0

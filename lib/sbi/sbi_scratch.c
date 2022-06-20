@@ -30,9 +30,7 @@ int sbi_scratch_init(struct sbi_scratch *scratch)
 	for (i = 0; i < SBI_HARTMASK_MAX_BITS; i++) {
 		if (sbi_platform_hart_invalid(plat, i))
 			continue;
-		hartid_to_scratch_table[i] =
-			((hartid2scratch)scratch->hartid_to_scratch)(i,
-					sbi_platform_hart_index(plat, i));
+		hartid_to_scratch_table[i] = ((hartid2scratch)scratch->hartid_to_scratch)(i,sbi_platform_hart_index(plat, i));
 		if (hartid_to_scratch_table[i])
 			last_hartid_having_scratch = i;
 	}

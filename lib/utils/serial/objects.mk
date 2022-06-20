@@ -28,6 +28,8 @@ libsbiutils-objs-y += serial/fdt_serial_litex.o
 carray-fdt_serial_drivers-y += fdt_serial_uart8250
 libsbiutils-objs-y += serial/fdt_serial_uart8250.o
 
+libsbiutils-objs-y += serial/inspiresemi-uart.o
+
 carray-fdt_serial_drivers-y += fdt_serial_xlnx_uartlite
 libsbiutils-objs-y += serial/fdt_serial_xlnx_uartlite.o
 
