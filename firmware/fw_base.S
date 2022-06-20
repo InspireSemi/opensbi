@@ -18,7 +18,7 @@
 #define BOOT_STATUS_BOOT_HART_DONE	2
 
 // The boot hart
-#define BOOT_HART 0x1dd2
+#define BOOT_HART 0x003F
 
 
 .macro	MOV_3R __d0, __s0, __d1, __s1, __d2, __s2
@@ -432,15 +432,13 @@ _start_warm:
 	/* Reset all registers all HARTs */
 	li	ra, 0
 	call	_reset_regs
-
-#if 0	
+	
 	/* Disable and clear all interrupts */
 	csrw	CSR_MIE, zero
 	csrw	CSR_MIP, zero
-#endif
 
 	/* Find HART count and HART stack size */
-	lla	a4, platform
+	lla	a4, platform  // platform is defined in platform.c under platform/inspiresemi/hondo
 #if __riscv_xlen == 64
 	lwu	s7, SBI_PLATFORM_HART_COUNT_OFFSET(a4)
 	lwu	s8, SBI_PLATFORM_HART_STACK_SIZE_OFFSET(a4)
@@ -453,7 +451,7 @@ _start_warm:
 	/* Find HART id */
 	csrr	s6, CSR_MHARTID
 
-	/* Find HART index */
+	/* Find HART index  s9 has the table ptr*/
 	beqz	s9, 3f
 	li	a4, 0
 1:
@@ -465,7 +463,7 @@ _start_warm:
 	beq	a5, s6, 2f /* s6 Hart Id, a5 is the index hart id # from platform.c hondo_hart_index2id[] */
 	add	s9, s9, 4  /* Increment the pointer */
 	add	a4, a4, 1  /* add 1 to the hart id */
-	blt	a4, s7, 1b /* Check if we have looked at all harts defined in the code */
+	blt	a4, s7, 1b /* Check if we have looked at all harts defined in the code s7 has the total # of harts */
 	li	a4, -1     /* We have checked for all harts, set error */
 2:	add	s6, a4, zero /* s6 now has the index 0,1,2,3,etc.. of the matching hart id or -1 for no match found */
 3:	bge	s6, s7, _start_hang /* Hang if we never found a match to our hart id */
@@ -483,7 +481,7 @@ _start_warm:
 	csrw	CSR_MSCRATCH, tp
 
 	/* Setup stack */
-	add	sp, tp, zero  /* 4k stack */
+	add	sp, tp, zero  /* 8k stack -- defined in sbi_platform.h -- may need to be smaller - 4k??*/
 
 	/* Setup trap handler */
 	lla	a4, _trap_handler

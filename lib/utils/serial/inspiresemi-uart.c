@@ -20,7 +20,7 @@
 
 static void * uartregaddr;
 
-void hondo_uart_putc(char c) 
+void cr4864_uart_putc(char c) 
 {
 
   // Check for TX FIFO busy...
@@ -35,7 +35,7 @@ void hondo_uart_putc(char c)
 
 }
 
-int hondo_uart_getc( void ) 
+int cr4864_uart_getc( void ) 
 {
 	uint8_t ch;
 
@@ -55,14 +55,14 @@ int hondo_uart_getc( void )
 #define SIM 1
 
 // init the uart to 8N1 and 115200 baud rate
-int hondo_uart_init(void *uartctrl) {
+int cr4864_uart_init(void *uartctrl) {
 
   	uint8_t  databits, parity, stopbits, dll, dlm;
 
 	uartregaddr = uartctrl;
 
 #ifdef SIM
-  	uint32_t uartdiv=0x02;  // Set to 1041000 for Simulation
+  	uint32_t uartdiv=0x01;  // Set to 1041000 for Simulation
 #else
   	unsigned long long uart_target_baud = 115200ULL; // Baud Rate
   	const uint32_t clk_mhz = 33333333; // Input Clock 33.333Mhz

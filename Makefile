@@ -423,7 +423,7 @@ targets-y += $(firmware-bins-path-y)
 
 # Default rule "make" should always be first rule
 .PHONY: all
-all: $(targets-y) $(platform_build_dir)/firmware/fw_payload.bin.cyp
+all: $(targets-y) $(platform_build_dir)/firmware/fw_payload.bin.sgn $(platform_build_dir)/firmware/fw_payload.bin.enc.sgn
 
 # Preserve all intermediate files
 .SECONDARY:
@@ -431,15 +431,35 @@ all: $(targets-y) $(platform_build_dir)/firmware/fw_payload.bin.cyp
 ROOTDIR = ../
 CRYPTOCOREBIN = $(ROOTDIR)bintools
 LDADDR = $(CRYPTOCOREBIN)/loadaddr.sh
-PACKAGER = $(CRYPTOCOREBIN)/cryptopackager
+SIGNER=$(CRYPTOCOREBIN)/inspiresign
+VERIFIER=$(CRYPTOCOREBIN)/inspireverify
+ENCRYPT=$(CRYPTOCOREBIN)/inspireencrypt
+DECRYPT=$(CRYPTOCOREBIN)/inspiredecrypt
+IMAGETOOL=$(CRYPTOCOREBIN)/imagepackager
+BIN2HEX=$(CRYPTOCOREBIN)/freedom_bin2hex
 
-$(platform_build_dir)/firmware/fw_payload.bin.cyp :  LOADADDR = $(shell $(LDADDR) $(platform_build_dir)/firmware/fw_payload.elf)
-$(platform_build_dir)/firmware/fw_payload.bin.cyp: $(platform_build_dir)/firmware/fw_payload.bin
+$(platform_build_dir)/firmware/fw_payload.bin.enc : $(platform_build_dir)/firmware/fw_payload.bin
+	$(ENCRYPT) $^ $@ app
+
+$(platform_build_dir)/firmware/fw_payload.bin.sgn :  LOADADDR1 = $(shell $(LDADDR) $(platform_build_dir)/firmware/fw_payload.elf)
+$(platform_build_dir)/firmware/fw_payload.bin.sgn: $(platform_build_dir)/firmware/fw_payload.bin
 	echo $(LOADADDR)
-	$(PACKAGER) $^ $(LOADADDR)
-	$(OBJDUMP) -S -D -x $(platform_build_dir)/firmware/fw_payload.elf >> $(platform_build_dir)/firmware/fw_payload.dump
+	$(SIGNER) $^ $(LOADADDR1) app
+	$(VERIFIER) $@ app
+	$(BIN2HEX) -w 64 -i $@ -o $@.hex64
+	$(OBJDUMP) -S -d -x $(platform_build_dir)/firmware/fw_payload.elf >> $(platform_build_dir)/firmware/fw_payload.dump
 	cp $(platform_build_dir)/firmware/fw_payload.dump $(ROOTDIR)/test
 	cp $@ $(ROOTDIR)/test
+
+
+$(platform_build_dir)/firmware/fw_payload.bin.enc.sgn :  LOADADDR = $(shell $(LDADDR) $(platform_build_dir)/firmware/fw_payload.elf)
+$(platform_build_dir)/firmware/fw_payload.bin.enc.sgn: $(platform_build_dir)/firmware/fw_payload.bin.enc
+	echo $(LOADADDR)
+	$(SIGNER) $^ $(LOADADDR) app
+	$(VERIFIER) $@ app
+	$(BIN2HEX) -w 64 -i $@ -o $@.hex64
+	cp $@ $(ROOTDIR)/test
+
 
 
 $(build_dir)/%.bin: $(build_dir)/%.elf
@@ -616,7 +636,9 @@ clean:
 	$(CMD_PREFIX)find $(build_dir) -type f -name "*.bin" -exec rm -rf {} +
 	$(if $(V), @echo " RM        $(build_dir)/*.dtb")
 	$(CMD_PREFIX)find $(build_dir) -type f -name "*.dtb" -exec rm -rf {} +
-	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.bin.cyp
+	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.bin.sgn
+	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.bin.enc
+	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.bin.enc.sgn
 	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.dump
 
 # Rule for "make distclean"

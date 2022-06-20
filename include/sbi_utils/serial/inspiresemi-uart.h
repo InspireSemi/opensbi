@@ -12,10 +12,10 @@
 
 #include <sbi/sbi_types.h>
 
-void hondo_uart_putc(char ch);
+void cr4864_uart_putc(char ch);
 
-int hondo_uart_getc(void);
+int cr4864_uart_getc(void);
 
-int hondo_uart_init(void *uartctrl);
+int cr4864_uart_init(void *uartctrl);
 
 #endif
