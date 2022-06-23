@@ -438,7 +438,7 @@ _start_warm:
 	csrw	CSR_MIP, zero
 
 	/* Find HART count and HART stack size */
-	lla	a4, platform  // platform is defined in platform.c under platform/inspiresemi/hondo
+	lla	a4, platform  // platform is defined in platform.c under platform/inspiresemi/cr3664
 #if __riscv_xlen == 64
 	lwu	s7, SBI_PLATFORM_HART_COUNT_OFFSET(a4)
 	lwu	s8, SBI_PLATFORM_HART_STACK_SIZE_OFFSET(a4)

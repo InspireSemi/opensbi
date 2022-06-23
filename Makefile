@@ -636,10 +636,10 @@ clean:
 	$(CMD_PREFIX)find $(build_dir) -type f -name "*.bin" -exec rm -rf {} +
 	$(if $(V), @echo " RM        $(build_dir)/*.dtb")
 	$(CMD_PREFIX)find $(build_dir) -type f -name "*.dtb" -exec rm -rf {} +
-	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.bin.sgn
-	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.bin.enc
-	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.bin.enc.sgn
-	rm -rf build/platform/inspiresemi/hondo/firmware/fw_payload.dump
+	rm -rf build/platform/inspiresemi/cr3664/firmware/fw_payload.bin.sgn
+	rm -rf build/platform/inspiresemi/cr3664/firmware/fw_payload.bin.enc
+	rm -rf build/platform/inspiresemi/cr3664/firmware/fw_payload.bin.enc.sgn
+	rm -rf build/platform/inspiresemi/cr3664/firmware/fw_payload.dump
 
 # Rule for "make distclean"
 .PHONY: distclean
